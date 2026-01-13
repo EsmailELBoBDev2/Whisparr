@@ -348,14 +348,25 @@ namespace NzbDrone.Core.Parser
 
                                 if (simpleTitleReplaceString.IsNotNullOrWhiteSpace())
                                 {
-                                    if (match[0].Groups["title"].Success && match[0].Groups["title"].Index < simpleReleaseTitle.Length)
+                                    var titleGroup = match[0].Groups["title"];
+                                    var startIndex = titleGroup.Index;
+                                    var length = titleGroup.Length;
+                                    var replacementValue = simpleTitleReplaceString.Contains('.') ? "A.Movie" : "A Movie";
+
+                                    // Only use Remove+Insert if the match indices are valid for simpleReleaseTitle
+                                    // The match was performed on simpleTitle/originalTitle, so indices may not be valid for simpleReleaseTitle
+                                    if (titleGroup.Success &&
+                                        startIndex >= 0 &&
+                                        startIndex < simpleReleaseTitle.Length &&
+                                        startIndex + length <= simpleReleaseTitle.Length)
                                     {
-                                        simpleReleaseTitle = simpleReleaseTitle.Remove(match[0].Groups["title"].Index, match[0].Groups["title"].Length)
-                                                                               .Insert(match[0].Groups["title"].Index, simpleTitleReplaceString.Contains('.') ? "A.Movie" : "A Movie");
+                                        simpleReleaseTitle = simpleReleaseTitle.Remove(startIndex, length)
+                                                                               .Insert(startIndex, replacementValue);
                                     }
                                     else
                                     {
-                                        simpleReleaseTitle = simpleReleaseTitle.Replace(simpleTitleReplaceString, simpleTitleReplaceString.Contains('.') ? "A.Movie" : "A Movie");
+                                        // Fall back to Replace when indices don't match (different strings or out of bounds)
+                                        simpleReleaseTitle = simpleReleaseTitle.Replace(simpleTitleReplaceString, replacementValue);
                                     }
                                 }
 
