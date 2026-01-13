@@ -5,34 +5,35 @@
 # Stage 2: Runtime stage - minimal image with just the built application
 
 #===============================================================================
-# STAGE 1: BUILD
+# STAGE 1: BUILD (using Debian for better compatibility)
 #===============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS builder
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS builder
 
 # Install build dependencies
-RUN apk add --no-cache \
-    bash \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
-    icu-libs \
     nodejs \
     npm \
-    yarn
+    && npm install -g yarn \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
 # Copy the source code
 COPY . .
 
-# Build the backend for linux-musl-x64 (Alpine)
+# Increase file descriptor limits and build the backend for linux-musl-x64 (Alpine)
+# Using --disable-parallel to avoid "too many open files" error
 RUN echo "Building Whisparr backend..." && \
-    dotnet restore src/Whisparr.sln && \
+    dotnet restore src/Whisparr.sln --disable-parallel && \
     dotnet msbuild -restore src/Whisparr.sln \
         -p:SelfContained=True \
         -p:Configuration=Release \
         -p:Platform=Posix \
         -p:RuntimeIdentifiers=linux-musl-x64 \
-        -t:PublishAllRids
+        -t:PublishAllRids \
+        -maxcpucount:1
 
 # Build the frontend
 RUN echo "Building Whisparr frontend..." && \
